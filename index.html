@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Windows Binaries of GNU nano Unknown</title>
+    <style>
+        :root {
+            color-scheme: light;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            color: #1a1a1a;
+            background: #fff;
+        }
+        * { box-sizing: border-box; }
+        body { margin: 0; line-height: 1.7; }
+        .container { max-width: 860px; margin: 0 auto; padding: 48px 24px; }
+        header { margin-bottom: 32px; padding-bottom: 28px; border-bottom: 1px solid #e5e7eb; }
+        h1 { margin: 0 0 12px; font-size: 2.25rem; line-height: 1.2; }
+        .subtitle, p, ul, ol { color: #59636e; }
+        .button-group { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+        .btn { display: inline-flex; align-items: center; justify-content: center; padding: 10px 18px; border: 0; border-radius: 6px; background: #1a1a1a; color: white; text-decoration: none; font: inherit; cursor: pointer; }
+        .btn:hover { color: white; background: #333; }
+        .btn-success { background: #10b981; }
+        .btn-success:hover { background: #059669; }
+        h2 { margin-top: 40px; }
+        a { color: #2563eb; }
+        code { padding: 2px 6px; border-radius: 4px; background: #f1f3f5; }
+        pre { overflow-x: auto; padding: 18px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f1f3f5; }
+        pre code { padding: 0; }
+        blockquote { margin: 24px 0; padding: 12px 18px; border-left: 4px solid #fbbf24; background: #fffbeb; }
+        .markdown-alert { margin: 20px 0; padding: 14px 18px; border-left: 4px solid #0088cc; background: #f3f8fb; }
+        .markdown-alert-title { margin-bottom: 8px; font-weight: 600; }
+        table { display: block; overflow-x: auto; border-collapse: collapse; }
+        th, td { padding: 8px 12px; border: 1px solid #e5e7eb; text-align: left; }
+        img { max-width: 100%; height: auto; }
+        footer { margin-top: 64px; padding-top: 24px; border-top: 1px solid #e5e7eb; text-align: center; font-size: .9rem; }
+        .modal { display: none; position: fixed; inset: 0; z-index: 10; align-items: center; justify-content: center; padding: 20px; background: #0008; }
+        .modal.active { display: flex; }
+        .modal-content { width: min(100%, 480px); padding: 28px; border-radius: 12px; background: white; box-shadow: 0 20px 40px #0003; }
+        .modal-content h2 { margin: 0 0 8px; }
+        .option-buttons { display: flex; gap: 10px; margin: 18px 0 24px; }
+        .option-btn { flex: 1; padding: 12px 8px; border: 2px solid #e5e7eb; border-radius: 6px; background: white; cursor: pointer; font: inherit; }
+        .option-btn.selected { border-color: #2563eb; background: #2563eb; color: white; }
+        .modal-footer { display: flex; justify-content: flex-end; gap: 10px; padding-top: 18px; border-top: 1px solid #e5e7eb; }
+        .btn-secondary { background: #f1f3f5; color: #1a1a1a; }
+        .btn-secondary:hover { background: #e5e7eb; color: #1a1a1a; }
+        @media (max-width: 560px) {
+            h1 { font-size: 1.8rem; }
+            .container { padding: 32px 18px; }
+            .option-buttons { flex-direction: column; }
+            .modal-footer { flex-wrap: wrap; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Windows Binaries of GNU nano Unknown</h1>
+            <p class="subtitle">A small, friendly text editor for use in a terminal.</p>
+            <div class="button-group">
+                <a class="btn" href="https://github.com/KnugiHK/nano-on-windows">View on GitHub</a>
+                <button class="btn btn-success" id="downloadBtn">Download nano</button>
+                <a class="btn" href="https://github.com/KnugiHK/nano-on-windows/releases/latest/download/datafiles.zip">Download syntax files</a>
+            </div>
+        </header>
+        <main id="content"><p>GNU nano is a small, friendly text editor for use in a terminal.</p>
+<p>This project provides statically linked Windows builds of GNU nano for x86, x64, and ARM64. The binaries are cross-compiled on Ubuntu using mingw-w64 and llvm-mingw.</p>
+<div class="markdown-alert markdown-alert-tip">
+<p class="markdown-alert-title"><svg class="octicon octicon-light-bulb mr-2" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M8 1.5c-2.363 0-4 1.69-4 3.75 0 .984.424 1.625.984 2.304l.214.253c.223.264.47.556.673.848.284.411.537.896.621 1.49a.75.75 0 0 1-1.484.211c-.04-.282-.163-.547-.37-.847a8.456 8.456 0 0 0-.542-.68c-.084-.1-.173-.205-.268-.32C3.201 7.75 2.5 6.766 2.5 5.25 2.5 2.31 4.863 0 8 0s5.5 2.31 5.5 5.25c0 1.516-.701 2.5-1.328 3.259-.095.115-.184.22-.268.319-.207.245-.383.453-.541.681-.208.3-.33.565-.37.847a.751.751 0 0 1-1.485-.212c.084-.593.337-1.078.621-1.489.203-.292.45-.584.673-.848.075-.088.147-.173.213-.253.561-.679.985-1.32.985-2.304 0-2.06-1.637-3.75-4-3.75ZM5.75 12h4.5a.75.75 0 0 1 0 1.5h-4.5a.75.75 0 0 1 0-1.5ZM6 15.25a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5a.75.75 0 0 1-.75-.75Z"></path></svg>Tip</p>
+<p>Native Windows on ARM (ARM64) binaries are available.</p>
+</div>
+<h2>How to use nano</h2>
+<p>Download a standalone executable from the <a href="https://github.com/KnugiHK/nano-for-windows/releases/latest">latest release</a> and run it from a terminal:</p>
+<pre><code class="language-powershell">.\nano-x64.exe .\file.txt
+</code></pre>
+<p>For instructions on using GNU nano, see the <a href="https://www.nano-editor.org/docs.php">official documentation</a>.</p>
+<h2>Build environment</h2>
+<ul>
+<li><strong>Cross-compiled builds</strong>: GitHub Actions builds the Windows binaries on Ubuntu using mingw-w64 for x86 and x64, and llvm-mingw for ARM64.</li>
+<li><strong>Statically linked ncurses</strong>: The required ncurses library is statically linked. The binaries rely on standard Windows system DLLs, not third-party DLLs.</li>
+<li><strong>Native terminal support</strong>: ncurses is built with its Win32 console driver and bundled terminal descriptions, supporting Windows Terminal, ConPTY, SSH, and the classic console.</li>
+<li><strong>Windows configuration paths</strong>: Nano searches standard Windows locations for its configuration and syntax files, including <code>%APPDATA%</code>, <code>%LOCALAPPDATA%</code>, <code>%USERPROFILE%</code>, and <code>C:/ProgramData/nano</code>.</li>
+</ul>
+<h3>Supported architectures</h3>
+<table>
+<thead>
+<tr>
+<th>Binary</th>
+<th>Architecture</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>nano-x86.exe</code></td>
+<td>32-bit x86</td>
+</tr>
+<tr>
+<td><code>nano-x64.exe</code></td>
+<td>64-bit x64</td>
+</tr>
+<tr>
+<td><code>nano-arm64.exe</code></td>
+<td>64-bit ARM64</td>
+</tr>
+</tbody></table>
+<h3>Configuration</h3>
+<p>Nano checks for system-wide configuration in <code>C:/ProgramData/nano/nanorc</code> and next to <code>nano.exe</code>. User configuration can be placed in <code>%XDG_CONFIG_HOME%/nano/nanorc</code>, <code>%HOME%/.nanorc</code> or <code>%USERPROFILE%/.nanorc</code>, <code>%HOME%/.config/nano/nanorc</code> or <code>%USERPROFILE%/.config/nano/nanorc</code>, <code>%APPDATA%/nano/nanorc</code>, or <code>%LOCALAPPDATA%/nano/nanorc</code>.</p>
+<p>To load the syntax highlighting files from <code>datafiles.zip</code>, extract the archive and add this line to your <code>nanorc</code> file, adjusting the path to the extracted <code>share/nano</code> directory:</p>
+<pre><code class="language-nanorc">include &quot;C:/ProgramData/nano/share/nano/*.nanorc&quot;
+</code></pre>
+<p>The release&#39;s <code>datafiles.zip</code> contains the complete <code>share</code> directory and the <code>LICENSE</code> file. Extract it to the location referenced by your <code>nanorc</code> include.</p>
+<h2>Local build</h2>
+<p>To build GNU nano for Windows on Ubuntu or WSL, install the required tools:</p>
+<pre><code class="language-bash">sudo apt-get update
+sudo apt-get install -y \
+  build-essential \
+  mingw-w64 \
+  pkg-config \
+  ncurses-bin \
+  ncurses-term \
+  texinfo \
+  xz-utils \
+  wget \
+  patch
+</code></pre>
+<p>Then clone this repository and run the build script:</p>
+<pre><code class="language-bash">git clone https://github.com/KnugiHK/nano-for-windows.git
+cd nano-for-windows
+
+./build.sh             # Builds x86 and x64
+./build.sh x86         # Builds x86 only
+./build.sh x64         # Builds x64 only
+./build.sh arm64       # Builds ARM64 only (downloads llvm-mingw if needed)
+./build.sh all         # Builds all three architectures
+</code></pre>
+<p>Build outputs, downloaded sources, and temporary files are kept in the gitignored <code>build-nano/</code> directory. Run the Windows smoke tests with:</p>
+<pre><code class="language-bash">python3 nano_tests.py --arch all
+</code></pre>
+<h2>Verifying Build Integrity</h2>
+<p>To ensure that the release files were built directly from this source code via GitHub Actions and have not been tampered with, GitHub Artifact Attestations is used. You can verify the authenticity of all three executables and <code>datafiles.zip</code> using the GitHub CLI.</p>
+<h3>Using PowerShell (Windows)</h3>
+<pre><code class="language-powershell">Get-Item nano*.exe, datafiles.zip | ForEach-Object { gh attestation verify $_.FullName -R KnugiHK/nano-for-windows }
+</code></pre>
+<h3>Using Bash (Linux/WSL/macOS)</h3>
+<pre><code class="language-bash">for file in nano*.exe datafiles.zip; do gh attestation verify &quot;$file&quot; -R KnugiHK/nano-for-windows; done
+</code></pre>
+<h2>License</h2>
+<p>GNU nano is distributed under the GNU General Public License version 3 or later (GPLv3+). ncurses is distributed under the MIT-style X11 License.</p>
+</main>
+        <footer>
+            <p>Project maintained by <a href="https://knugi.com/">KnugiHK</a></p>
+            <p>Licensed under <a href="https://github.com/KnugiHK/nano-on-windows/blob/main/LICENSE">GPLv3+</a></p>
+            <p><small>Last updated: November 15, 2026</small></p>
+        </footer>
+    </div>
+    <div id="downloadModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="modal-content">
+            <h2 id="modalTitle">Download nano Unknown</h2>
+            <p>Select your preferred architecture.</p>
+            <div class="option-buttons">
+                <button class="option-btn selected" data-arch="x64">x64 (64-bit)</button>
+                <button class="option-btn" data-arch="x86">x86 (32-bit)</button>
+                <button class="option-btn" data-arch="arm64">ARM64</button>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelBtn">Cancel</button>
+                <button class="btn btn-success" id="confirmDownloadBtn">Download</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        const modal = document.getElementById('downloadModal');
+        const optionButtons = document.querySelectorAll('.option-btn');
+        let selectedArch = 'x64';
+
+        function closeModal() {
+            modal.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        document.getElementById('downloadBtn').addEventListener('click', () => {
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        });
+        document.getElementById('cancelBtn').addEventListener('click', closeModal);
+        modal.addEventListener('click', (event) => {
+            if (event.target === modal) closeModal();
+        });
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && modal.classList.contains('active')) closeModal();
+        });
+        optionButtons.forEach((button) => {
+            button.addEventListener('click', () => {
+                optionButtons.forEach((option) => option.classList.remove('selected'));
+                button.classList.add('selected');
+                selectedArch = button.dataset.arch;
+            });
+        });
+        document.getElementById('confirmDownloadBtn').addEventListener('click', () => {
+            const fileName = 'nano-' + selectedArch + '.exe';
+            const link = document.createElement('a');
+            link.href = 'https://github.com/KnugiHK/nano-on-windows/releases/latest/download/' + fileName;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            closeModal();
+        });
+    </script>
+</body>
+</html>
