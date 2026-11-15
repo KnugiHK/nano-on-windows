@@ -1,0 +1,51 @@
+name: Generate Website from README
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'README.md'
+      - '.github/workflows/generate-website.yml'
+      - '.github/workflows/renovate.yml'
+      - '.github/generate-website.js'
+      - 'renovate.json'
+  workflow_dispatch:
+permissions:
+  contents: write
+  pages: write
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 'latest'
+      
+      - name: Install dependencies
+        run: npm install marked fs-extra marked-alert
+      
+      - name: Generate website from README
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          export LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "Unknown")
+          echo "Latest tag is $LATEST_TAG"
+          node .github/generate-website.js
+          echo 'nano.knugi.dev' > ./docs/CNAME
+      
+      - name: Deploy to gh-pages
+        if: github.ref == 'refs/heads/master'  # Ensure deployment only happens from master
+        uses: peaceiris/actions-gh-pages@4f9cc6602d3f66b9c108549d475ec49e8ef4d45e
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs
+          publish_branch: gh-pages  
