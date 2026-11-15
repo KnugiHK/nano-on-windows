@@ -42,7 +42,6 @@ jobs:
             texinfo \
             xz-utils \
             zip \
-            unzip \
             wget \
             patch \
             file
@@ -51,6 +50,10 @@ jobs:
         run: |
           chmod +x build.sh
           ./build.sh x86
+          mkdir -p build-nano/datafiles/share
+          cp -a build-nano/install/x86/share/. build-nano/datafiles/share/
+          cp LICENSE build-nano/datafiles/LICENSE
+          (cd build-nano/datafiles && zip -rq ../datafiles.zip share LICENSE)
 
       - name: Inspect PE headers and DLL imports
         run: |
@@ -58,13 +61,13 @@ jobs:
           file nano-x86.exe
           i686-w64-mingw32-objdump -p nano-x86.exe | grep "DLL Name:"
 
-      - name: Attest x86 binaries
+      - name: Attest x86 binary and data archive
         if: github.event_name != 'pull_request'
         uses: actions/attest-build-provenance@v2
         with:
           subject-path: |
             build-nano/nano-x86.exe
-            build-nano/nano-*-win-x86.zip
+            build-nano/datafiles.zip
 
       - name: Upload x86 artifacts
         uses: actions/upload-artifact@v4
@@ -72,7 +75,7 @@ jobs:
           name: nano-windows-x86
           path: |
             build-nano/nano-x86.exe
-            build-nano/nano-*-win-x86.zip
+            build-nano/datafiles.zip
           if-no-files-found: error
 
   build-x64:
@@ -99,8 +102,6 @@ jobs:
             ncurses-term \
             texinfo \
             xz-utils \
-            zip \
-            unzip \
             wget \
             patch \
             file
@@ -122,7 +123,6 @@ jobs:
         with:
           subject-path: |
             build-nano/nano-x64.exe
-            build-nano/nano-*-win-x64.zip
 
       - name: Upload x64 artifacts
         uses: actions/upload-artifact@v4
@@ -130,7 +130,6 @@ jobs:
           name: nano-windows-x64
           path: |
             build-nano/nano-x64.exe
-            build-nano/nano-*-win-x64.zip
           if-no-files-found: error
 
   build-arm64:
@@ -163,8 +162,6 @@ jobs:
             ncurses-term \
             texinfo \
             xz-utils \
-            zip \
-            unzip \
             wget \
             patch \
             file
@@ -186,7 +183,6 @@ jobs:
         with:
           subject-path: |
             build-nano/nano-arm64.exe
-            build-nano/nano-*-win-arm64.zip
 
       - name: Upload arm64 artifacts
         uses: actions/upload-artifact@v4
@@ -194,7 +190,6 @@ jobs:
           name: nano-windows-arm64
           path: |
             build-nano/nano-arm64.exe
-            build-nano/nano-*-win-arm64.zip
           if-no-files-found: error
 
   package:
@@ -209,17 +204,15 @@ jobs:
           path: dist
           merge-multiple: true
 
-      - name: Generate SHA256 checksums
-        run: |
-          cd dist
-          sha256sum nano-x86.exe nano-x64.exe nano-arm64.exe nano-*-win-*.zip > SHA256SUMS.txt
-          cat SHA256SUMS.txt
-
       - name: Upload combined artifacts
         uses: actions/upload-artifact@v4
         with:
           name: nano-windows-binaries
-          path: dist/*
+          path: |
+            dist/nano-x86.exe
+            dist/nano-x64.exe
+            dist/nano-arm64.exe
+            dist/datafiles.zip
           if-no-files-found: error
 
   smoke-test-windows:
@@ -267,8 +260,5 @@ jobs:
             dist/nano-x86.exe
             dist/nano-x64.exe
             dist/nano-arm64.exe
-            dist/nano-*-win-x86.zip
-            dist/nano-*-win-x64.zip
-            dist/nano-*-win-arm64.zip
-            dist/SHA256SUMS.txt
+            dist/datafiles.zip
           generate_release_notes: true

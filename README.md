@@ -36,11 +36,13 @@ For instructions on using GNU nano, see the [official documentation](https://www
 
 Nano checks for system-wide configuration in `C:/ProgramData/nano/nanorc` and next to `nano.exe`. User configuration can be placed in `%XDG_CONFIG_HOME%/nano/nanorc`, `%HOME%/.nanorc` or `%USERPROFILE%/.nanorc`, `%HOME%/.config/nano/nanorc` or `%USERPROFILE%/.config/nano/nanorc`, `%APPDATA%/nano/nanorc`, or `%LOCALAPPDATA%/nano/nanorc`.
 
-To load the syntax highlighting files included in a portable release archive, add this line to your `nanorc` file, adjusting the path to the archive's `share/nano` directory:
+To load the syntax highlighting files from `datafiles.zip`, extract the archive and add this line to your `nanorc` file, adjusting the path to the extracted `share/nano` directory:
 
 ```nanorc
 include "C:/ProgramData/nano/share/nano/*.nanorc"
 ```
+
+The release's `datafiles.zip` contains the complete `share` directory and the `LICENSE` file. Extract it to the location referenced by your `nanorc` include.
 
 ## Local build
 
@@ -56,7 +58,6 @@ sudo apt-get install -y \
   ncurses-term \
   texinfo \
   xz-utils \
-  zip \
   wget \
   patch
 ```
@@ -82,18 +83,18 @@ python3 nano_tests.py --arch all
 
 ## Verifying Build Integrity
 
-To ensure that the binaries provided in the releases were built directly from this source code via GitHub Actions and have not been tampered with, GitHub Artifact Attestations is used. You can verify the authenticity of any `.exe` using the GitHub CLI.
+To ensure that the release files were built directly from this source code via GitHub Actions and have not been tampered with, GitHub Artifact Attestations is used. You can verify the authenticity of all three executables and `datafiles.zip` using the GitHub CLI.
 
 ### Using PowerShell (Windows)
 
 ```powershell
-gci "nano*.exe" | % { gh attestation verify $_.FullName -R KnugiHK/nano-for-windows }
+Get-Item nano*.exe, datafiles.zip | ForEach-Object { gh attestation verify $_.FullName -R KnugiHK/nano-for-windows }
 ```
 
 ### Using Bash (Linux/WSL/macOS)
 
 ```bash
-for file in nano*.exe; do ; gh attestation verify "$file" -R KnugiHK/nano-for-windows; done
+for file in nano*.exe datafiles.zip; do gh attestation verify "$file" -R KnugiHK/nano-for-windows; done
 ```
 
 ## License

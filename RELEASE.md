@@ -18,15 +18,15 @@ Statically linked Windows executables of **GNU nano** (x86, x64, arm64) with zer
 | `nano-x64.exe` | 64-bit `x86_64` | Standalone single-file executable |
 | `nano-x86.exe` | 32-bit `i686` | Standalone single-file executable |
 | `nano-arm64.exe` | 64-bit `ARM64` | Standalone single-file executable for Windows on ARM |
-| `nano-9.3-win-x64.zip` | 64-bit `x86_64` | Portable bundle (`nano.exe` + `share/nano/*.nanorc` + `nanorc.sample`) |
-| `nano-9.3-win-x86.zip` | 32-bit `i686` | Portable bundle (`nano.exe` + `share/nano/*.nanorc` + `nanorc.sample`) |
-| `nano-9.3-win-arm64.zip` | 64-bit `ARM64` | Portable bundle (`nano.exe` + `share/nano/*.nanorc` + `nanorc.sample`) |
-| `SHA256SUMS.txt` | All | SHA-256 digests for all release binaries and archives |
+| `datafiles.zip` | All | Complete `share` directory and the `LICENSE` file |
 
 ### Attestation Verification
 
-Verify binary build provenance using the GitHub CLI:
+Verify build provenance for the executables and data archive using the GitHub CLI:
 
 ```bash
-gh attestation verify nano-x64.exe --repo ${{ github.repository }}
+gh attestation verify nano-x86.exe --repo KnugiHK/nano-for-windows
+gh attestation verify nano-x64.exe --repo KnugiHK/nano-for-windows
+gh attestation verify nano-arm64.exe --repo KnugiHK/nano-for-windows
+gh attestation verify datafiles.zip --repo KnugiHK/nano-for-windows
 ```

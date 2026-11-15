@@ -97,7 +97,7 @@ check_host_deps() {
     local mingw_host="$1"
     local missing=()
 
-    for tool in "${mingw_host}-gcc" "${mingw_host}-strip" "${mingw_host}-ar" "${mingw_host}-ranlib" "pkg-config" "make" "patch" "tic" "infocmp" "xz" "zip"; do
+    for tool in "${mingw_host}-gcc" "${mingw_host}-strip" "${mingw_host}-ar" "${mingw_host}-ranlib" "pkg-config" "make" "patch" "tic" "infocmp" "xz"; do
         if ! command -v "${tool}" >/dev/null 2>&1; then
             missing+=("${tool}")
         fi
@@ -105,7 +105,7 @@ check_host_deps() {
 
     if [ "${#missing[@]}" -gt 0 ]; then
         echo "[ERROR] Missing required build tools for target ${mingw_host}: ${missing[*]}" >&2
-        echo "        On Ubuntu, install: sudo apt-get install -y build-essential mingw-w64 pkg-config ncurses-bin ncurses-term xz-utils zip patch wget" >&2
+        echo "        On Ubuntu, install: sudo apt-get install -y build-essential mingw-w64 pkg-config ncurses-bin ncurses-term xz-utils patch wget" >&2
         echo "        For arm64, ensure llvm-mingw/bin is in your PATH." >&2
         exit 1
     fi
@@ -149,8 +149,7 @@ build_arch() {
 
     local build_path="${OUT_DIR}/build/${arch}"
     local install_path="${OUT_DIR}/install/${arch}"
-    local release_path="${OUT_DIR}/release/nano-${NANO_VER}-win-${arch}"
-    mkdir -p "${build_path}" "${install_path}" "${release_path}"
+    mkdir -p "${build_path}" "${install_path}"
 
     # Download source tarballs once into shared cache
     download_tarball \
@@ -289,7 +288,7 @@ build_arch() {
     popd >/dev/null
 
     # -------------------------------------------------------------------------
-    # Post-Build: Strip, Copy & Package Release Bundle
+    # Post-Build: Strip & Copy Binary
     # -------------------------------------------------------------------------
     local built_exe="${install_path}/bin/nano.exe"
     if [ ! -f "${built_exe}" ]; then
@@ -302,34 +301,6 @@ build_arch() {
     # Copy architecture-tagged binary to the build-nano output directory
     cp -f "${built_exe}" "${OUT_DIR}/nano-${arch}.exe"
     log "Created output binary: ${OUT_DIR}/nano-${arch}.exe"
-
-    # Assemble portable release archive (exe + syntax files + sample nanorc + terminfo if present)
-    rm -rf "${release_path}"
-    mkdir -p "${release_path}/share"
-    cp -f "${built_exe}" "${release_path}/nano.exe"
-    cp -f "${built_exe}" "${release_path}/nano-${arch}.exe"
-
-    if [ -d "${install_path}/share/nano" ]; then
-        cp -rf "${install_path}/share/nano" "${release_path}/share/"
-    fi
-    if [ -d "${install_path}/share/terminfo" ]; then
-        cp -rf "${install_path}/share/terminfo" "${release_path}/share/"
-    fi
-    if [ -f "${build_path}/nano-${NANO_VER}/doc/sample.nanorc" ]; then
-        cp -f "${build_path}/nano-${NANO_VER}/doc/sample.nanorc" "${release_path}/nanorc.sample"
-    elif [ -f "${build_path}/nano-${NANO_VER}/doc/sample.nanorc.in" ]; then
-        cp -f "${build_path}/nano-${NANO_VER}/doc/sample.nanorc.in" "${release_path}/nanorc.sample"
-    fi
-    if [ -f "${build_path}/nano-${NANO_VER}/COPYING" ]; then
-        cp -f "${build_path}/nano-${NANO_VER}/COPYING" "${release_path}/LICENSE.txt"
-    fi
-
-    pushd "${OUT_DIR}/release" >/dev/null
-    rm -f "${OUT_DIR}/nano-${NANO_VER}-win-${arch}.zip"
-    zip -rq "${OUT_DIR}/nano-${NANO_VER}-win-${arch}.zip" "nano-${NANO_VER}-win-${arch}"
-    popd >/dev/null
-
-    log "Packaged release archive: ${OUT_DIR}/nano-${NANO_VER}-win-${arch}.zip"
 }
 
 # -----------------------------------------------------------------------------
