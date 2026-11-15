@@ -1,0 +1,205 @@
+--- a/src/definitions.h	2026-10-02 13:49:49.000000000 +0800
++++ b/src/definitions.h	2026-11-15 14:44:37.914735966 +0800
+@@ -59,6 +59,83 @@
+ #include <sys/param.h>
+ #endif
+ 
++/* Windows-specific headers and compatibility definitions. */
++#ifdef _WIN32
++#include <windows.h>
++#include <io.h>
++#include <process.h>
++#include <direct.h>
++#include <shlwapi.h>
++
++/* POSIX signal constants not defined in MinGW. */
++#ifndef SIGHUP
++#define SIGHUP    1
++#endif
++#ifndef SIGQUIT
++#define SIGQUIT   3
++#endif
++#ifndef SIGKILL
++#define SIGKILL   9
++#endif
++#ifndef SIGALRM
++#define SIGALRM   14
++#endif
++#ifndef SIGCONT
++#define SIGCONT   18
++#endif
++#ifndef SIGSTOP
++#define SIGSTOP   19
++#endif
++#ifndef SIGTSTP
++#define SIGTSTP   20
++#endif
++#ifndef SIGWINCH
++#define SIGWINCH  28
++#endif
++
++/* POSIX file mode bits not defined in MinGW. */
++#ifndef S_IRWXG
++#define S_IRWXG   00070
++#endif
++#ifndef S_IRGRP
++#define S_IRGRP   00040
++#endif
++#ifndef S_IWGRP
++#define S_IWGRP   00020
++#endif
++#ifndef S_IXGRP
++#define S_IXGRP   00010
++#endif
++#ifndef S_IRWXO
++#define S_IRWXO   00007
++#endif
++#ifndef S_IROTH
++#define S_IROTH   00004
++#endif
++#ifndef S_IWOTH
++#define S_IWOTH   00002
++#endif
++#ifndef S_IXOTH
++#define S_IXOTH   00001
++#endif
++#ifndef S_ISLNK
++#define S_ISLNK(m) (0)
++#endif
++
++/* Map POSIX functions to Windows equivalents. */
++#ifndef fsync
++#define fsync(fd) _commit(fd)
++#endif
++
++/* Windows absolute path detection (drive letters and UNC paths). */
++#define IS_ABSOLUTE_PATH(p) (((p)[0] == '/') || ((p)[0] == '\\') || \
++    (isalpha((unsigned char)(p)[0]) && (p)[1] == ':' && \
++     ((p)[2] == '/' || (p)[2] == '\\' || (p)[2] == '\0')))
++
++#else /* !_WIN32 */
++#define IS_ABSOLUTE_PATH(p) ((p)[0] == '/')
++#endif /* _WIN32 */
++
+ #include <dirent.h>
+ #include <regex.h>
+ #include <signal.h>
+--- a/src/prototypes.h	2026-10-02 13:49:49.000000000 +0800
++++ b/src/prototypes.h	2026-11-15 14:45:30.070748498 +0800
+@@ -556,6 +556,9 @@
+ #endif
+ 
+ /* All functions in utils.c. */
++#ifdef _WIN32
++void normalize_slashes(char *path);
++#endif
+ void get_homedir(void);
+ const char *tail(const char *path);
+ char *concatenate(const char *path, const char *name);
+--- a/src/utils.c	2026-06-14 14:03:16.000000000 +0800
++++ b/src/utils.c	2026-11-15 14:44:23.114733134 +0800
+@@ -28,13 +28,45 @@
+ #include <string.h>
+ #include <unistd.h>
+ 
++#ifdef _WIN32
++/* Normalize all backslashes to forward slashes in-place. */
++void normalize_slashes(char *path)
++{
++	if (path == NULL)
++		return;
++	for (char *p = path; *p != '\0'; p++) {
++		if (*p == '\\')
++			*p = '/';
++	}
++}
++#endif
++
+ /* Set global variable `homedir` to the user's home directory.  First try
+- * $HOME, otherwise consult the password database for the current UID. */
++ * $HOME, otherwise consult the password database for the current UID (POSIX)
++ * or USERPROFILE / HOMEDRIVE+HOMEPATH (Windows). */
+ void get_homedir(void)
+ {
+ 	if (homedir == NULL) {
+ 		const char *homenv = getenv("HOME");
+ 
++#ifdef _WIN32
++		/* On Windows, HOME is usually not set.  Try USERPROFILE first,
++		 * then HOMEDRIVE + HOMEPATH as fallback. */
++		if (homenv == NULL || *homenv == '\0')
++			homenv = getenv("USERPROFILE");
++
++		if (homenv != NULL && *homenv != '\0') {
++			homedir = copy_of(homenv);
++			normalize_slashes(homedir);
++		} else {
++			const char *drive = getenv("HOMEDRIVE");
++			const char *path = getenv("HOMEPATH");
++			if (drive != NULL && path != NULL) {
++				homedir = concatenate(drive, path);
++				normalize_slashes(homedir);
++			}
++		}
++#else /* !_WIN32 */
+ #ifdef HAVE_PWD_H
+ 		/* When $HOME is unset, or when we're root, try the database. */
+ 		if (homenv == NULL || geteuid() == ROOT_UID) {
+@@ -48,6 +80,7 @@
+ 		/* Only set `homedir` if a home directory could be determined. */
+ 		if (homenv && *homenv)
+ 			homedir = copy_of(homenv);
++#endif /* _WIN32 */
+ 	}
+ }
+ 
+--- a/src/browser.c	2026-07-25 16:51:54.000000000 +0800
++++ b/src/browser.c	2026-11-15 14:44:49.102738324 +0800
+@@ -72,7 +72,16 @@
+ 	if (gauge > COLS)
+ 		gauge = COLS;
+ 
++#ifdef _WIN32
++	/* On Windows, gnulib's DIR type is incompatible with native rewinddir(),
++	 * so we close and reopen the directory instead. */
++	closedir(dir);
++	dir = opendir(path);
++	if (dir == NULL)
++		return;
++#else
+ 	rewinddir(dir);
++#endif
+ 
+ 	free_chararray(filelist, list_length);
+ 
+--- a/src/files.c	2026-10-02 13:49:49.000000000 +0800
++++ b/src/files.c	2026-11-15 14:44:55.934739855 +0800
+@@ -29,12 +29,16 @@
+ #endif
+ #include <string.h>
+ #include <unistd.h>
++#ifndef _WIN32
+ #include <sys/wait.h>
++#endif
+ 
+ #define RW_FOR_ALL  (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH)
+ 
+ #ifndef HAVE_FSYNC
+-# define fsync(...)  0
++# ifndef _WIN32
++#  define fsync(...)  0
++# endif
+ #endif
+ 
+ /* Add an item to the circular list of openfile structs. */
+--- a/src/nano.c	2026-10-02 13:49:49.000000000 +0800
++++ b/src/nano.c	2026-11-15 14:45:15.290744556 +0800
+@@ -980,7 +980,7 @@
+ 	/* The suspend keystroke must not elicit cursor-position display. */
+ 	lastmessage = HUSH;
+ 
+-#ifdef SIGSTOP
++#if defined(SIGSTOP) && !defined(_WIN32)
+ 	/* Do what mutt does: send ourselves a SIGSTOP. */
+ 	kill(0, SIGSTOP);
+ #endif

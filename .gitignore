@@ -1,0 +1,22 @@
+# All build temp files & outputs live inside build-nano/
+build-nano/
+
+# Compiled binaries and archives
+*.exe
+*.zip
+*.tar.gz
+*.tar.xz
+*.tar.bz2
+*.sha256
+SHA256SUMS.txt
+
+# Backup & temporary patch artifacts
+*.orig
+*.rej
+*~
+
+# Python / OS artifacts
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db
