@@ -1,4 +1,4 @@
-## GNU nano for Windows — Static Release Binaries
+## GNU nano for Windows - Static Release Binaries
 
 Statically linked Windows executables of **GNU nano** (x86, x64, arm64) with zero external third-party DLL dependencies.
 
