@@ -24,7 +24,7 @@ For instructions on using GNU nano, see the [official documentation](https://www
 - **Native terminal support**: ncurses is built with its Win32 console driver and bundled terminal descriptions, supporting Windows Terminal, ConPTY, SSH, and the classic console.
 - **Mouse wheel scrolling**: Includes patched ncurses with Win32 mouse event handling enabled by default for seamless scrolling in Windows Terminal and standard consoles.
 - **Windows configuration paths**: Nano searches standard Windows locations for its configuration and syntax files, including `%APPDATA%`, `%LOCALAPPDATA%`, `%USERPROFILE%`, and `C:/ProgramData/nano`.
-- **Documented patches**: Every change made to the bundled ncurses and nano sources, and the Windows-specific reason for it, is described in [`patches/README.md`](https://github.com/KnugiHK/nano-on-windows/patches/README.md).
+- **Documented patches**: Every change made to the bundled ncurses and nano sources, and the Windows-specific reason for it, is described in [`patches/README.md`](https://github.com/KnugiHK/nano-on-windows/tree/master/patches).
 
 ### Supported architectures
 
