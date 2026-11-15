@@ -63,14 +63,14 @@ jobs:
 
       - name: Attest x86 binary and data archive
         if: github.event_name != 'pull_request'
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: |
             build-nano/nano-x86.exe
             build-nano/datafiles.zip
 
       - name: Upload x86 artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: nano-windows-x86
           path: |
@@ -119,13 +119,13 @@ jobs:
 
       - name: Attest x64 binaries
         if: github.event_name != 'pull_request'
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: |
             build-nano/nano-x64.exe
 
       - name: Upload x64 artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: nano-windows-x64
           path: |
@@ -179,13 +179,13 @@ jobs:
 
       - name: Attest arm64 binaries
         if: github.event_name != 'pull_request'
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: |
             build-nano/nano-arm64.exe
 
       - name: Upload arm64 artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: nano-windows-arm64
           path: |
@@ -198,14 +198,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download architecture artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: nano-windows-*
           path: dist
           merge-multiple: true
 
       - name: Upload combined artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v
         with:
           name: nano-windows-binaries
           path: |
@@ -215,8 +215,8 @@ jobs:
             dist/datafiles.zip
           if-no-files-found: error
 
-  smoke-test-windows:
-    name: Smoke Test on Windows (x86, x64, arm64)
+  smoke-test-windows-x64:
+    name: Smoke Test on Windows x64 (x86, x64)
     needs: [package]
     runs-on: windows-latest
     steps:
@@ -224,22 +224,44 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Download build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: nano-windows-binaries
           path: build-nano
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
-          python-version: '3.12'
+          python-version: '3.14'
 
       - name: Run nano_tests.py smoke suite
         run: python nano_tests.py --arch all
 
+  smoke-test-windows-arm64:
+    name: Smoke Test on Windows arm64
+    needs: [package]
+    runs-on: windows-11-arm
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: nano-windows-binaries
+          path: build-nano
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.14'
+
+      - name: Run nano_tests.py smoke suite
+        run: python nano_tests.py --arch arm64
+
   release:
     name: Publish GitHub Release
-    needs: [package, smoke-test-windows]
+    needs: [package, smoke-test-windows-x64, smoke-test-windows-arm64]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
@@ -247,13 +269,13 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Download build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: nano-windows-binaries
           path: dist
 
       - name: Publish Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           body_path: RELEASE.md
           files: |
