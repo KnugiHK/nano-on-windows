@@ -311,21 +311,50 @@ class NanoWindowsTestSuite(unittest.TestCase):
                 if not (lib_path.is_file() and ncurses_src.is_dir() and nano_src.is_dir()):
                     continue
 
-                # Symbol check on the linked archive.
+                # Symbol check on the linked archive.  llvm-mingw (arm64)
+                # archives are aarch64-PE COFF, which the host GNU nm
+                # cannot parse ("file format not recognized"), so prefer
+                # a target-aware nm when one is available: build.sh keeps
+                # llvm-mingw under build-nano/toolchains and puts its bin
+                # on PATH during arm64 builds.
                 symbol = "_nc_console_mouse_tracking"
-                try:
-                    proc = subprocess.run(
-                        ["nm", str(lib_path)],
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        timeout=30,
-                    )
-                    symtable = proc.stdout
-                except (FileNotFoundError, subprocess.TimeoutExpired):
-                    symtable = lib_path.read_bytes()
+                # i386 PE decorates C symbols with a leading underscore
+                # (__nc_console_mouse_tracking), while x64/arm64 do not,
+                # so allow both forms.
+                symbol_re = rf"\b T _*{re.escape(symbol)}\b"
+                toolchain_bin = (
+                    Path("build-nano") / "toolchains" / "llvm-mingw" / "bin"
+                )
+                nm_names = (
+                    [
+                        str(toolchain_bin / "aarch64-w64-mingw32-nm"),
+                        str(toolchain_bin / "llvm-nm"),
+                        "aarch64-w64-mingw32-nm",
+                        "llvm-nm",
+                        "nm",
+                    ]
+                    if arch == "arm64"
+                    else ["nm"]
+                )
+                symtable = b""
+                for nm_name in nm_names:
+                    try:
+                        proc = subprocess.run(
+                            [nm_name, str(lib_path)],
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            timeout=30,
+                        )
+                    except FileNotFoundError:
+                        continue
+                    if re.search(symbol_re, proc.stdout.decode("utf-8", errors="replace")):
+                        symtable = proc.stdout
+                        break
+                    if not symtable:
+                        symtable = proc.stdout
                 self.assertRegex(
                     symtable.decode("utf-8", errors="replace"),
-                    rf"\b T {re.escape(symbol)}\b",
+                    symbol_re,
                     f"{lib_path} does not export {symbol}; the ConPTY mouse "
                     "relay patch was not applied/linked",
                 )
