@@ -17,8 +17,8 @@ env:
   LLVM_MINGW_VER: "20250114"
 
 jobs:
-  cross-compile:
-    name: Cross-Compile (x86, x64, arm64)
+  build-x86:
+    name: Build x86
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -28,18 +28,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: build-nano/cache
-          key: source-tarballs-${{ hashFiles('build.sh') }}
-          restore-keys: |
-            source-tarballs-
+          key: source-tarballs-x86-${{ hashFiles('build.sh') }}
 
-      - name: Cache llvm-mingw toolchain
-        id: cache-llvm-mingw
-        uses: actions/cache@v4
-        with:
-          path: /opt/llvm-mingw
-          key: llvm-mingw-ucrt-${{ env.LLVM_MINGW_VER }}-x86_64
-
-      - name: Install Ubuntu packages (mingw-w64 & host ncurses-bin)
+      - name: Install Ubuntu packages
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -56,65 +47,184 @@ jobs:
             patch \
             file
 
-      - name: Install llvm-mingw for ARM64
-        if: steps.cache-llvm-mingw.outputs.cache-hit != 'true'
-        run: |
-          LLVM_TARBALL="llvm-mingw-${LLVM_MINGW_VER}-ucrt-ubuntu-20.04-x86_64.tar.xz"
-          wget -q "https://github.com/mstorsjo/llvm-mingw/releases/download/${LLVM_MINGW_VER}/${LLVM_TARBALL}" -O "/tmp/${LLVM_TARBALL}"
-          sudo mkdir -p /opt/llvm-mingw
-          sudo tar -xJf "/tmp/${LLVM_TARBALL}" --strip-components=1 -C /opt/llvm-mingw
-          rm -f "/tmp/${LLVM_TARBALL}"
-
-      - name: Add llvm-mingw to PATH
-        run: echo "/opt/llvm-mingw/bin" >> $GITHUB_PATH
-
-      - name: Build all targets (x86, x64, arm64)
+      - name: Build x86
         run: |
           chmod +x build.sh
-          ./build.sh all
+          ./build.sh x86
 
       - name: Inspect PE headers and DLL imports
         run: |
           cd build-nano
-          file nano-x86.exe nano-x64.exe nano-arm64.exe
-          echo "=== x86 DLL Imports ==="
+          file nano-x86.exe
           i686-w64-mingw32-objdump -p nano-x86.exe | grep "DLL Name:"
-          echo "=== x64 DLL Imports ==="
-          x86_64-w64-mingw32-objdump -p nano-x64.exe | grep "DLL Name:"
-          echo "=== arm64 DLL Imports ==="
-          /opt/llvm-mingw/bin/aarch64-w64-mingw32-objdump -p nano-arm64.exe | grep "DLL Name:"
 
-      - name: Generate SHA256 Checksums
-        run: |
-          cd build-nano
-          sha256sum nano-x86.exe nano-x64.exe nano-arm64.exe nano-*-win-*.zip > SHA256SUMS.txt
-          cat SHA256SUMS.txt
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: nano-windows-binaries
-          path: |
-            build-nano/nano-x86.exe
-            build-nano/nano-x64.exe
-            build-nano/nano-arm64.exe
-            build-nano/nano-*-win-*.zip
-            build-nano/SHA256SUMS.txt
-          if-no-files-found: error
-
-      - name: Generate build provenance attestation
+      - name: Attest x86 binaries
         if: github.event_name != 'pull_request'
         uses: actions/attest-build-provenance@v2
         with:
           subject-path: |
             build-nano/nano-x86.exe
+            build-nano/nano-*-win-x86.zip
+
+      - name: Upload x86 artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nano-windows-x86
+          path: |
+            build-nano/nano-x86.exe
+            build-nano/nano-*-win-x86.zip
+          if-no-files-found: error
+
+  build-x64:
+    name: Build x64
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Cache downloaded source tarballs
+        uses: actions/cache@v4
+        with:
+          path: build-nano/cache
+          key: source-tarballs-x64-${{ hashFiles('build.sh') }}
+
+      - name: Install Ubuntu packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            mingw-w64 \
+            pkg-config \
+            ncurses-bin \
+            ncurses-term \
+            texinfo \
+            xz-utils \
+            zip \
+            unzip \
+            wget \
+            patch \
+            file
+
+      - name: Build x64
+        run: |
+          chmod +x build.sh
+          ./build.sh x64
+
+      - name: Inspect PE headers and DLL imports
+        run: |
+          cd build-nano
+          file nano-x64.exe
+          x86_64-w64-mingw32-objdump -p nano-x64.exe | grep "DLL Name:"
+
+      - name: Attest x64 binaries
+        if: github.event_name != 'pull_request'
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
             build-nano/nano-x64.exe
+            build-nano/nano-*-win-x64.zip
+
+      - name: Upload x64 artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nano-windows-x64
+          path: |
+            build-nano/nano-x64.exe
+            build-nano/nano-*-win-x64.zip
+          if-no-files-found: error
+
+  build-arm64:
+    name: Build arm64
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Cache downloaded source tarballs
+        uses: actions/cache@v4
+        with:
+          path: build-nano/cache
+          key: source-tarballs-arm64-${{ hashFiles('build.sh') }}
+
+      - name: Cache llvm-mingw toolchain
+        uses: actions/cache@v4
+        with:
+          path: build-nano/toolchains/llvm-mingw
+          key: llvm-mingw-${{ env.LLVM_MINGW_VER }}-arm64
+
+      - name: Install Ubuntu packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            mingw-w64 \
+            pkg-config \
+            ncurses-bin \
+            ncurses-term \
+            texinfo \
+            xz-utils \
+            zip \
+            unzip \
+            wget \
+            patch \
+            file
+
+      - name: Build arm64
+        run: |
+          chmod +x build.sh
+          ./build.sh arm64
+
+      - name: Inspect PE headers and DLL imports
+        run: |
+          cd build-nano
+          file nano-arm64.exe
+          ./toolchains/llvm-mingw/bin/aarch64-w64-mingw32-objdump -p nano-arm64.exe | grep "DLL Name:"
+
+      - name: Attest arm64 binaries
+        if: github.event_name != 'pull_request'
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
             build-nano/nano-arm64.exe
-            build-nano/nano-*-win-*.zip
+            build-nano/nano-*-win-arm64.zip
+
+      - name: Upload arm64 artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nano-windows-arm64
+          path: |
+            build-nano/nano-arm64.exe
+            build-nano/nano-*-win-arm64.zip
+          if-no-files-found: error
+
+  package:
+    name: Package Build Artifacts
+    needs: [build-x86, build-x64, build-arm64]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download architecture artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: nano-windows-*
+          path: dist
+          merge-multiple: true
+
+      - name: Generate SHA256 checksums
+        run: |
+          cd dist
+          sha256sum nano-x86.exe nano-x64.exe nano-arm64.exe nano-*-win-*.zip > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Upload combined artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nano-windows-binaries
+          path: dist/*
+          if-no-files-found: error
 
   smoke-test-windows:
-    name: Smoke Test on Windows (x86 & x64 & PE Validation)
-    needs: cross-compile
+    name: Smoke Test on Windows (x86, x64, arm64)
+    needs: [package]
     runs-on: windows-latest
     steps:
       - name: Checkout repository
@@ -124,7 +234,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: nano-windows-binaries
-          path: .
+          path: build-nano
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -136,7 +246,7 @@ jobs:
 
   release:
     name: Publish GitHub Release
-    needs: [cross-compile, smoke-test-windows]
+    needs: [package, smoke-test-windows]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
