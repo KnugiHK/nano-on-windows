@@ -1,49 +1,50 @@
-# nano-on-windows
+# Windows Binaries of GNU nano 9.3
 
-Statically linked builds of **GNU nano** (x86, x64, arm64) for Windows, cross-compiled on Ubuntu using `mingw-w64` and `llvm-mingw`. Inspired by and architecturally aligned with [KnugiHK/wget-on-windows](https://github.com/KnugiHK/wget-on-windows).
+GNU nano is a small, friendly text editor for use in a terminal.
 
----
+This project provides statically linked Windows builds of GNU nano for x86, x64, and ARM64. The binaries are cross-compiled on Ubuntu using mingw-w64 and llvm-mingw.
 
-## Features
+> [!TIP]
+> Native Windows on ARM (ARM64) binaries are available.
 
-* **Zero External DLL Dependencies:** Statically linked against `ncursesw` (`--enable-widec --enable-term-driver --enable-sp-funcs --enable-interop`). Depends only on standard Windows system DLLs (`KERNEL32.dll`, `USER32.dll`, `ADVAPI32.dll`, `SHLWAPI.dll`, and the Windows C Runtime).
-* **Three Native Architectures:**
-  * `nano-x86.exe` — 32-bit x86 (`i686-w64-mingw32`)
-  * `nano-x64.exe` — 64-bit x86_64 (`x86_64-w64-mingw32`)
-  * `nano-arm64.exe` — 64-bit ARM64 (`aarch64-w64-mingw32` via `llvm-mingw`)
-* **Native Windows Terminal, ConPTY, SSH & `conhost.exe` Support:**
-  * Compiles `ncursesw` with both the native Win32 Console driver (`win32con`) and built-in terminfo fallback tables (`xterm-256color`, `xterm`, `vt100`, `vt220`, `cygwin`, `linux`, `dumb`).
-  * Automatically configures UTF-8 console codepages (`CP_UTF8`) and detects Windows Terminal (`WT_SESSION`), VS Code integrated terminals (`TERM_PROGRAM`), and OpenSSH sessions without requiring an external `/usr/share/terminfo` installation.
-* **Windows-Native Configuration Paths:** Resolves `nanorc` and syntax highlighting files across standard Windows environment variables (`%USERPROFILE%`, `%APPDATA%`, `%LOCALAPPDATA%`, `C:/ProgramData/nano`, and portable executable directories).
+## How to use nano
 
----
+Download a standalone executable from the [latest release](https://github.com/KnugiHK/nano-for-windows/releases/latest) and run it from a terminal:
 
-## Configuration & `nanorc` Search Order
+```powershell
+.\nano-x64.exe .\file.txt
+```
 
-`nano-on-windows` searches for configuration files in the following order:
+For instructions on using GNU nano, see the [official documentation](https://www.nano-editor.org/docs.php).
 
-### 1. System-Wide Configuration
-1. `C:/ProgramData/nano/nanorc`
-2. `<directory-of-nano.exe>/nanorc` *(portable fallback)*
+## Build environment
 
-### 2. User Configuration (First match wins)
-1. `%XDG_CONFIG_HOME%/nano/nanorc`
-2. `%HOME%/.nanorc` or `%USERPROFILE%/.nanorc`
-3. `%HOME%/.config/nano/nanorc` or `%USERPROFILE%/.config/nano/nanorc`
-4. `%APPDATA%/nano/nanorc` (e.g., `C:/Users/<You>/AppData/Roaming/nano/nanorc`)
-5. `%LOCALAPPDATA%/nano/nanorc` (e.g., `C:/Users/<You>/AppData/Local/nano/nanorc`)
+- **Cross-compiled builds**: GitHub Actions builds the Windows binaries on Ubuntu using mingw-w64 for x86 and x64, and llvm-mingw for ARM64.
+- **Statically linked ncurses**: The required ncurses library is statically linked. The binaries rely on standard Windows system DLLs, not third-party DLLs.
+- **Native terminal support**: ncurses is built with its Win32 console driver and bundled terminal descriptions, supporting Windows Terminal, ConPTY, SSH, and the classic console.
+- **Windows configuration paths**: Nano searches standard Windows locations for its configuration and syntax files, including `%APPDATA%`, `%LOCALAPPDATA%`, `%USERPROFILE%`, and `C:/ProgramData/nano`.
 
-To enable all bundled syntax highlighting rules from the release `.zip`, add the following line to your `nanorc` (using forward slashes):
+### Supported architectures
+
+| Binary | Architecture |
+| --- | --- |
+| `nano-x86.exe` | 32-bit x86 |
+| `nano-x64.exe` | 64-bit x64 |
+| `nano-arm64.exe` | 64-bit ARM64 |
+
+### Configuration
+
+Nano checks for system-wide configuration in `C:/ProgramData/nano/nanorc` and next to `nano.exe`. User configuration can be placed in `%XDG_CONFIG_HOME%/nano/nanorc`, `%HOME%/.nanorc` or `%USERPROFILE%/.nanorc`, `%HOME%/.config/nano/nanorc` or `%USERPROFILE%/.config/nano/nanorc`, `%APPDATA%/nano/nanorc`, or `%LOCALAPPDATA%/nano/nanorc`.
+
+To load the syntax highlighting files included in a portable release archive, add this line to your `nanorc` file, adjusting the path to the archive's `share/nano` directory:
 
 ```nanorc
 include "C:/ProgramData/nano/share/nano/*.nanorc"
 ```
 
----
+## Local build
 
-## Building from Source (Ubuntu)
-
-### 1. Install Prerequisites
+To build GNU nano for Windows on Ubuntu or WSL, install the required tools:
 
 ```bash
 sudo apt-get update
@@ -60,49 +61,41 @@ sudo apt-get install -y \
   patch
 ```
 
-*(Optional for `arm64`)* Download and add [llvm-mingw](https://github.com/mstorsjo/llvm-mingw) to your `PATH`.
-
-### 2. Run the Build Script
+Then clone this repository and run the build script:
 
 ```bash
-# Build x86 and x64
-./build.sh both
+git clone https://github.com/KnugiHK/nano-for-windows.git
+cd nano-for-windows
 
-# Build a single architecture
-./build.sh x64
-./build.sh x86
-./build.sh arm64
-
-# Build all three architectures (x86, x64, arm64)
-./build.sh all
+./build.sh             # Builds x86 and x64
+./build.sh x86         # Builds x86 only
+./build.sh x64         # Builds x64 only
+./build.sh arm64       # Builds ARM64 only (downloads llvm-mingw if needed)
+./build.sh all         # Builds all three architectures
 ```
 
-### 3. Run the Smoke Test Suite
+Build outputs, downloaded sources, and temporary files are kept in the gitignored `build-nano/` directory. Run the Windows smoke tests with:
 
 ```bash
 python3 nano_tests.py --arch all
 ```
 
-> **Note:** All build temporary files (tarball cache, toolchains, build trees, install staging) and the output binaries (`nano-x86.exe`, `nano-x64.exe`, `nano-arm64.exe`, plus the portable `nano-<version>-win-<arch>.zip` bundles) are produced inside the `build-nano/` directory. Nothing is written to the repository root, and the entire directory is gitignored.
+## Verifying Build Integrity
 
----
+To ensure that the binaries provided in the releases were built directly from this source code via GitHub Actions and have not been tampered with, GitHub Artifact Attestations is used. You can verify the authenticity of any `.exe` using the GitHub CLI.
 
-## Verifying Build Provenance & Checksums
-
-All official GitHub Actions builds generate SLSA Build Level 2 provenance attestations via `actions/attest-build-provenance`. You can verify any downloaded binary using the [GitHub CLI](https://cli.github.com/):
-
-```bash
-gh attestation verify nano-x64.exe --repo <owner>/nano-on-windows
-```
-
-Or verify against `SHA256SUMS.txt` on Windows PowerShell:
+### Using PowerShell (Windows)
 
 ```powershell
-Get-FileHash .\nano-x64.exe -Algorithm SHA256
+gci "nano*.exe" | % { gh attestation verify $_.FullName -R KnugiHK/nano-for-windows }
 ```
 
----
+### Using Bash (Linux/WSL/macOS)
+
+```bash
+for file in nano*.exe; do ; gh attestation verify "$file" -R KnugiHK/nano-for-windows; done
+```
 
 ## License
 
-GNU `nano` is distributed under the **GNU General Public License v3.0 or later (GPLv3+)**. `ncurses` is distributed under the **MIT-style X11 License**.
+GNU nano is distributed under the GNU General Public License version 3 or later (GPLv3+). ncurses is distributed under the MIT-style X11 License.
