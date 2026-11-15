@@ -22,10 +22,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Cache downloaded source tarballs
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: build-nano/cache
           key: source-tarballs-x86-${{ hashFiles('build.sh') }}
@@ -83,10 +83,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Cache downloaded source tarballs
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: build-nano/cache
           key: source-tarballs-x64-${{ hashFiles('build.sh') }}
@@ -137,16 +137,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Cache downloaded source tarballs
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: build-nano/cache
           key: source-tarballs-arm64-${{ hashFiles('build.sh') }}
 
       - name: Cache llvm-mingw toolchain
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: build-nano/toolchains/llvm-mingw
           key: llvm-mingw-${{ env.LLVM_MINGW_VER }}-arm64
@@ -221,7 +221,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Download build artifacts
         uses: actions/download-artifact@v4
@@ -244,7 +244,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Download build artifacts
         uses: actions/download-artifact@v4
