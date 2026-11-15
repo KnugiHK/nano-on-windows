@@ -9,7 +9,7 @@ Statically linked Windows executables of **GNU nano** (x86, x64, arm64) with zer
 | **GNU nano** | `9.3` | `--enable-utf8 --disable-nls --disable-libmagic --disable-speller` |
 | **ncursesw** | `6.6` | `--enable-widec --enable-term-driver --enable-sp-funcs --enable-interop` |
 | **x86 / x64 Toolchain** | `mingw-w64` (GCC) | Ubuntu `i686-w64-mingw32-gcc` / `x86_64-w64-mingw32-gcc` |
-| **ARM64 Toolchain** | `llvm-mingw` (20250114) | `aarch64-w64-mingw32-clang` (UCRT) |
+| **ARM64 Toolchain** | `llvm-mingw` (20261104) | `aarch64-w64-mingw32-clang` (UCRT) |
 
 ### Included Release Assets
 

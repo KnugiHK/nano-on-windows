@@ -14,7 +14,7 @@ permissions:
   attestations: write
 
 env:
-  LLVM_MINGW_VER: "20250114"
+  LLVM_MINGW_VER: "20261104"
 
 jobs:
   build-x86:
