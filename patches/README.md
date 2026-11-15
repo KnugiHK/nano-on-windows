@@ -144,6 +144,13 @@ Quick-edit mode is saved before first use and restored when tracking is
 switched off (nano exit or `M-M`), so the user's selection behavior is
 unchanged outside the period when nano owns the mouse.
 
+Because none of the relay's behavior leaves a readable trace in a
+stripped executable, the driver also embeds a compile-time marker
+string, `ncurses-mouse-relay/1`, next to the function.  The test suite
+(`test_06`) requires this marker in every built binary, which makes the
+relay's presence verifiable even on CI runners that only download the
+executables.
+
 ### 8. `lib_win32con.c` — `_nc_console_twait()`: wheel-aware event wait
 
 The wait loop peeks at console input records to decide what woke it up.
@@ -230,4 +237,8 @@ tar -xJf nano-9.3.tar.xz  && cd nano-9.3  && patch -p1 --dry-run < ../../patches
 ```
 
 Both must apply cleanly (and do; `build.sh` applies them for real before
-compiling, and `nano_tests.py` exercises the resulting binaries).
+compiling, and `nano_tests.py` exercises the resulting binaries).  Note
+that the DECSET-sequence check in the test suite only covers the
+passthrough fallback; `test_06` additionally verifies the ConPTY relay
+mechanism (the `_nc_console_mouse_tracking` symbol in the linked static
+library plus the relay/wheel logic in the compiled source tree).

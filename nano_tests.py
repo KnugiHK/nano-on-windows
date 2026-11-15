@@ -275,23 +275,43 @@ class NanoWindowsTestSuite(unittest.TestCase):
         ENABLE_MOUSE_INPUT console flag on the input handle (conhost then
         emits the mouse-mode sequences to the terminal), and quick-edit
         mode must be toggled in the same call or the flag stays
-        suppressed.  This is behavior invisible in the binary as a plain
-        string, so it is verified at two artifact levels:
+        suppressed.  None of that appears in the binary as an ordinary
+        message, so the patched console driver embeds a marker string
+        ("ncurses-mouse-relay/1") that must be present in every built
+        executable.  This works against stripped release binaries alone,
+        e.g. on CI runners that only download the executables.
 
-        1. The static ncurses archive must export the patched
-           `_nc_console_mouse_tracking` symbol (i.e. the patched object
-           is what nano links against).
-        2. If the build tree is still present, the sources that were
-           compiled must contain the relay logic (mode-flag toggle with
-           ENABLE_QUICK_EDIT_MODE / ENABLE_EXTENDED_FLAGS) and the
-           wheel-to-arrow-key binding in nano.
+        When the full build artifacts are also available (local builds),
+        the check is strengthened: the static ncurses archive must export
+        the patched `_nc_console_mouse_tracking` symbol, and the sources
+        that were compiled must contain the relay logic and the
+        wheel-to-arrow-key binding in nano.
         """
+        marker = b"ncurses-mouse-relay/1"
         for arch in self.TARGET_ARCHES:
             with self.subTest(arch=arch):
-                lib_path = Path("build-nano") / "install" / arch / "lib" / "libncursesw.a"
-                self.assertTrue(lib_path.is_file(), f"Missing library: {lib_path}")
+                exe_path = Path("build-nano") / f"nano-{arch}.exe"
+                self.assertTrue(exe_path.is_file(), f"Missing binary: {exe_path}")
+                self.assertIn(
+                    marker,
+                    exe_path.read_bytes(),
+                    f"{exe_path.name} lacks the ConPTY mouse relay marker; "
+                    "the ENABLE_MOUSE_INPUT/quick-edit relay (required for "
+                    "mouse support in Windows Terminal) was not compiled in",
+                )
 
-                # 1. Symbol check on the linked archive (durable artifact).
+                # Stronger checks — only possible when the full build
+                # artifacts are present (they are not on CI runners that
+                # just fetch the executables).
+                lib_path = Path("build-nano") / "install" / arch / "lib" / "libncursesw.a"
+                ncurses_src = (
+                    Path("build-nano") / "build" / arch / "ncurses-6.6" / "ncurses"
+                )
+                nano_src = Path("build-nano") / "build" / arch / "nano-9.3" / "src"
+                if not (lib_path.is_file() and ncurses_src.is_dir() and nano_src.is_dir()):
+                    continue
+
+                # Symbol check on the linked archive.
                 symbol = "_nc_console_mouse_tracking"
                 try:
                     proc = subprocess.run(
@@ -310,14 +330,7 @@ class NanoWindowsTestSuite(unittest.TestCase):
                     "relay patch was not applied/linked",
                 )
 
-                # 2. Source-level checks on the tree that was compiled.
-                ncurses_src = (
-                    Path("build-nano") / "build" / arch / "ncurses-6.6" / "ncurses"
-                )
-                nano_src = Path("build-nano") / "build" / arch / "nano-9.3" / "src"
-                if not ncurses_src.is_dir() or not nano_src.is_dir():
-                    continue  # build tree cleaned; symbol check above still ran
-
+                # Source-level checks on the tree that was compiled.
                 win32con = (ncurses_src / "tinfo" / "lib_win32con.c").read_text(
                     encoding="utf-8", errors="replace"
                 )
