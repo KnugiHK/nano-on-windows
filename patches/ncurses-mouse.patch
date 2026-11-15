@@ -1,0 +1,299 @@
+--- a/ncurses/curses.priv.h	2025-12-28 05:46:04.000000000 +0800
++++ b/ncurses/curses.priv.h	2026-11-15 16:06:50.159122417 +0800
+@@ -2582,6 +2582,7 @@
+ extern NCURSES_EXPORT(int)  _nc_console_isatty(int fd);
+ extern NCURSES_EXPORT(bool) _nc_console_keyExist(int keycode);
+ extern NCURSES_EXPORT(int)  _nc_console_keyok(int keycode, int flag);
++extern NCURSES_EXPORT(void) _nc_console_mouse_tracking(int enable);
+ extern NCURSES_EXPORT(int)  _nc_console_read(SCREEN *sp, HANDLE fd, int *buf);
+ extern NCURSES_EXPORT(bool) _nc_console_restore(void);
+ extern NCURSES_EXPORT(void) _nc_console_selectActiveHandle(void);
+--- a/ncurses/base/lib_mouse.c	2025-12-31 01:23:24.000000000 +0800
++++ b/ncurses/base/lib_mouse.c	2026-11-15 17:08:14.811610471 +0800
+@@ -459,6 +459,10 @@
+ #if USE_NAMED_PIPES
+     enable_xterm_mouse(sp, enable);
+ #else
++    /* Ask the attached terminal (e.g. Windows Terminal through ConPTY) to
++     * report mouse events, and make the wheel readable in a classic
++     * console by temporarily disabling quick-edit mode. */
++    _nc_console_mouse_tracking(enable);
+     sp->_mouse_active = enable;
+ #endif
+ }
+@@ -1405,6 +1409,17 @@
+ 	}
+     }
+ 
++    /* On Windows, the console driver reports a roll of the wheel as a
++     * press of the fourth or fifth button; there is no matching release
++     * event, so report it immediately rather than spending the click
++     * interval waiting for one. */
++    if (!result && (sp->_mouse_type == M_TERM_DRIVER)) {
++	MEVENT *prev = PREV(eventp);
++
++	if (prev->bstate & (BUTTON4_PRESSED | BUTTON5_PRESSED))
++	    result = TRUE;
++    }
++
+     returnCode(result);
+ }
+ 
+--- a/ncurses/tinfo/lib_win32con.c	2025-12-28 05:49:45.000000000 +0800
++++ b/ncurses/tinfo/lib_win32con.c	2026-11-15 16:44:41.583632707 +0800
+@@ -88,6 +88,12 @@
+ 
+ static bool console_initialized = FALSE;
+ 
++/* Whether the VT mouse-tracking relay (see _nc_console_mouse_tracking)
++ * is currently active.  ENABLE_MOUSE_INPUT is only passed to
++ * SetConsoleMode while this is set, so that the relay is never
++ * (re-)triggered by ncurses' unrelated console-mode changes. */
++static int mouse_tracking_active = 0;
++
+ /*   A process can only have a single console, so it is safe
+      to maintain all the information about it in a single
+      static structure.
+@@ -256,7 +262,11 @@
+ #endif
+ 	T(("lib_win32con:_nc_console_setmode %s", _nc_trace_ttymode(arg)));
+ 	if (hdl == WINCONSOLE.inp) {
+-	    dwFlag = arg->dwFlagIn | ENABLE_MOUSE_INPUT | VT_FLAG_IN;
++	    dwFlag = arg->dwFlagIn | VT_FLAG_IN;
++	    if (mouse_tracking_active)
++		dwFlag |= ENABLE_MOUSE_INPUT;
++	    else
++		dwFlag &= ~ENABLE_MOUSE_INPUT;
+ 	    TRCTTYIN(dwFlag);
+ 	    SetConsoleMode(hdl, dwFlag);
+ 
+@@ -270,7 +280,11 @@
+ 	    SetConsoleMode(hdl, dwFlag);
+ 
+ 	    alt = WINCONSOLE.inp;
+-	    dwFlag = arg->dwFlagIn | ENABLE_MOUSE_INPUT;
++	    dwFlag = arg->dwFlagIn;
++	    if (mouse_tracking_active)
++		dwFlag |= ENABLE_MOUSE_INPUT;
++	    else
++		dwFlag &= ~ENABLE_MOUSE_INPUT;
+ 	    TRCTTYIN(dwFlag);
+ 	    SetConsoleMode(alt, dwFlag);
+ 	    T(("effective mode set %s", _nc_trace_ttymode(&TRCTTY)));
+@@ -657,6 +671,11 @@
+                    ? 0 \
+                    : (int) WINCONSOLE.SBI.srWindow.Top)
+ 
++/* Scroll-wheel events are reported with the wheel delta rather than
++ * a button mask. */
++#define is_wheel_event(mer) \
++	(((mer).dwEventFlags & (MOUSE_WHEELED | MOUSE_HWHEELED)) != 0)
++
+ static bool
+ handle_mouse(SCREEN *sp, MOUSE_EVENT_RECORD mer)
+ {
+@@ -665,30 +684,59 @@
+ 
+     assert(sp);
+ 
+-    sp->_drv_mouse_old_buttons = sp->_drv_mouse_new_buttons;
+-    sp->_drv_mouse_new_buttons = mer.dwButtonState & BUTTON_MASK;
++    memset(&work, 0, sizeof(work));
+ 
+     /*
+-     * We're only interested if the button is pressed or released.
+-     * FIXME: implement continuous event-tracking.
++     * Translate a roll of the wheel into a press of the fourth (upward)
++     * or fifth (downward) button.  Horizontal wheel events are ignored.
+      */
+-    if (sp->_drv_mouse_new_buttons != sp->_drv_mouse_old_buttons) {
+-	memset(&work, 0, sizeof(work));
++    if (mer.dwEventFlags & MOUSE_WHEELED) {
++	int delta = (int) (short) HIWORD(mer.dwButtonState);
++
++	if (delta == 0)
++	    return FALSE;
++	work.bstate |= (delta > 0) ? BUTTON4_PRESSED : BUTTON5_PRESSED;
++	result = TRUE;
++    } else {
++	sp->_drv_mouse_old_buttons = sp->_drv_mouse_new_buttons;
++	sp->_drv_mouse_new_buttons = mer.dwButtonState & BUTTON_MASK;
+ 
+-	if (sp->_drv_mouse_new_buttons) {
+-	    work.bstate |= decode_mouse(sp, sp->_drv_mouse_new_buttons);
++	/*
++	 * We're only interested if the button is pressed or released.
++	 * FIXME: implement continuous event-tracking.
++	 */
++	if (sp->_drv_mouse_new_buttons != sp->_drv_mouse_old_buttons) {
++	    if (sp->_drv_mouse_new_buttons) {
++		work.bstate |= decode_mouse(sp, sp->_drv_mouse_new_buttons);
++	    } else {
++		/* cf: BUTTON_PRESSED, BUTTON_RELEASED */
++		work.bstate |= (decode_mouse(sp, sp->_drv_mouse_old_buttons)
++				>> 1);
++		result = TRUE;
++	    }
+ 	} else {
+-	    /* cf: BUTTON_PRESSED, BUTTON_RELEASED */
+-	    work.bstate |= (decode_mouse(sp, sp->_drv_mouse_old_buttons)
+-			    >> 1);
+-	    result = TRUE;
++	    return FALSE;
+ 	}
++    }
+ 
+-	work.x = mer.dwMousePosition.X;
+-	work.y = mer.dwMousePosition.Y - AdjustY();
++    work.x = mer.dwMousePosition.X;
++    work.y = mer.dwMousePosition.Y - AdjustY();
+ 
+-	sp->_drv_mouse_fifo[sp->_drv_mouse_tail] = work;
+-	sp->_drv_mouse_tail += 1;
++    /*
++     * Push the event directly into the screen's event queue rather than
++     * staging it in the driver fifo: the KEY_MOUSE code that the input
++     * machinery reads then always corresponds to an event that is already
++     * in the queue, which allows _nc_mouse_inline to deliver wheel events
++     * immediately instead of spending the click interval waiting for a
++     * release that will never come.
++     */
++    {
++	MEVENT *eventp = sp->_mouse_writep;
++
++	*eventp = work;
++	sp->_mouse_writep = (eventp >= (sp->_mouse_events + EV_MAX - 1)
++			     ? sp->_mouse_events
++			     : eventp + 1);
+     }
+     return result;
+ }
+@@ -813,6 +861,110 @@
+     returnCode(found);
+ }
+ 
++/*
++ * Switch the terminal's mouse reporting on or off, so that terminals
++ * such as Windows Terminal forward mouse events (including the scroll
++ * wheel) to the application.
++ *
++ * Two mechanisms are needed:
++ *
++ * 1. Under a pseudo-console (ConPTY, i.e. Windows Terminal, VS Code, ...),
++ *    the hosting conhost absorbs mouse DECSET sequences written to the
++ *    output handle.  The only way to ask the attached terminal to report
++ *    mouse events is the Win32 console flag ENABLE_MOUSE_INPUT on the
++ *    input handle: conhost then emits \e[?1003;1006h to the terminal
++ *    (microsoft/terminal#9970).  Unfortunately quick-edit mode suppresses
++ *    mouse input, so it must be turned off in the same SetConsoleMode
++ *    call.  conhost only relays when the *effective* ENABLE_MOUSE_INPUT
++ *    flag changes, so toggle it off first to force a state change.
++ *
++ * 2. A classic console (or a terminal hosting conhost in passthrough
++ *    mode) has no VT mouse protocol of its own; the wheel arrives as
++ *    MOUSE_EVENT_RECORDs regardless.  For hosts with passthrough mode,
++ *    also emit the standard VT mouse-tracking sequences when the output
++ *    is processed as VT; in a classic console without VT they would show
++ *    up as garbage, so they are gated on ENABLE_VIRTUAL_TERMINAL_PROCESSING.
++ */
++NCURSES_EXPORT(void)
++_nc_console_mouse_tracking(int enable)
++{
++    /* 1006 = SGR encoding, 1000 = report button presses and wheel rolls. */
++    static const char on_seq[] = "\033[?1006h\033[?1000h";
++    static const char off_seq[] = "\033[?1000l\033[?1006l";
++    /* Whether quick-edit mode was on before we started tracking (-1: unknown). */
++    static int quickedit_saved = -1;
++    DWORD mode = 0;
++    DWORD written = 0;
++    HANDLE hdl;
++    const char *seq;
++    size_t len;
++
++    T((T_CALLED("lib_win32con::_nc_console_mouse_tracking(%d)"), enable));
++
++    if (!console_initialized)
++	returnVoid;
++
++    /*
++     * Win32 input-flag relay (works under ConPTY as well as in a classic
++     * console, where quick-edit mode would otherwise swallow the wheel).
++     */
++    hdl = WINCONSOLE.inp;
++    if (hdl != INVALID_HANDLE_VALUE && GetConsoleMode(hdl, &mode)) {
++	if (enable) {
++	    mouse_tracking_active = 1;
++	    if (quickedit_saved < 0)
++		quickedit_saved = (mode & ENABLE_QUICK_EDIT_MODE) ? 1 : 0;
++	    /* Turn the mouse flag off (with quick-edit still suppressed)
++	     * and on again, so that conhost is guaranteed to notice the
++	     * change and relay the mouse mode to the terminal.  Toggling
++	     * quick-edit mode requires ENABLE_EXTENDED_FLAGS. */
++	    SetConsoleMode(hdl,
++			   ((mode & ~(ENABLE_MOUSE_INPUT |
++				      ENABLE_QUICK_EDIT_MODE)) |
++			    ENABLE_EXTENDED_FLAGS));
++	    SetConsoleMode(hdl,
++			   ((mode & ~ENABLE_QUICK_EDIT_MODE) |
++			    ENABLE_EXTENDED_FLAGS |
++			    ENABLE_MOUSE_INPUT));
++	} else {
++	    mouse_tracking_active = 0;
++	    if (quickedit_saved > 0) {
++		/* Restore quick-edit mode; conhost relays the loss of the
++		 * effective mouse flag, so the terminal stops reporting. */
++		quickedit_saved = -1;
++		SetConsoleMode(hdl,
++			       ((mode | ENABLE_QUICK_EDIT_MODE) |
++				ENABLE_EXTENDED_FLAGS));
++	    } else if (quickedit_saved == 0) {
++		/* Quick-edit was already off; drop the mouse flag to end
++		 * the relay. */
++		quickedit_saved = -1;
++		SetConsoleMode(hdl,
++			       (mode & ~(ENABLE_MOUSE_INPUT |
++					 ENABLE_EXTENDED_FLAGS |
++					 ENABLE_QUICK_EDIT_MODE)));
++	    }
++	}
++    }
++
++    /* DECSET fallback for passthrough-mode hosts. */
++    hdl = OutHandle();
++    if (hdl == INVALID_HANDLE_VALUE ||
++	!GetConsoleMode(hdl, &mode) ||
++	!(mode & ENABLE_VIRTUAL_TERMINAL_PROCESSING))
++	returnVoid;
++
++    if (enable) {
++	seq = on_seq;
++	len = sizeof(on_seq) - 1;
++    } else {
++	seq = off_seq;
++	len = sizeof(off_seq) - 1;
++    }
++    WriteConsoleA(hdl, seq, (DWORD) len, &written, NULL);
++    returnVoid;
++}
++
+ NCURSES_EXPORT(int)
+ _nc_console_twait(
+ 		     const SCREEN *sp,
+@@ -940,7 +1092,16 @@
+ 			    continue;
+ 			case MOUSE_EVENT:
+ 			    T(("twait:event MOUSE_EVENT"));
+-			    if (decode_mouse(sp,
++			    if (is_wheel_event(inp_rec.Event.MouseEvent)) {
++				/* A wheel event reaches us even when the
++				 * application does not expect mouse events;
++				 * discard it in that case. */
++				if (mode & TW_MOUSE) {
++				    code = TW_MOUSE;
++				    goto end;
++				}
++				CONSUME();
++			    } else if (decode_mouse(sp,
+ 					     (inp_rec.Event.MouseEvent.dwButtonState
+ 					      & BUTTON_MASK)) == 0) {
+ 				CONSUME();

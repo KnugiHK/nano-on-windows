@@ -176,6 +176,12 @@ build_arch() {
             patch -p1 < "${PATCH_DIR}/ncurses-mingw.patch"
         fi
 
+        # Enable mouse wheel support in the Win32 console driver
+        if [ -f "${PATCH_DIR}/ncurses-mouse.patch" ]; then
+            log "Applying patches/ncurses-mouse.patch..."
+            patch -p1 < "${PATCH_DIR}/ncurses-mouse.patch"
+        fi
+
         # Configure ncursesw with:
         # - native Win32 console driver (--enable-term-driver)
         # - compiled-in terminfo fallbacks (--with-fallbacks) via host tic/infocmp

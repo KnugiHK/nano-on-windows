@@ -7,11 +7,14 @@ Validates:
 2. PE COFF header machine architecture codes and subsystem type (IMAGE_SUBSYSTEM_WINDOWS_CUI).
 3. Absence of non-system dynamic DLL dependencies (verifies static ncursesw linking).
 4. Runtime execution of `nano --version` and `nano --help` on compatible hosts.
+5. Compiled-in VT mouse tracking sequences (DECSET fallback for passthrough hosts).
+6. ConPTY mouse relay (`ENABLE_MOUSE_INPUT` / QuickEdit handling) in ncurses for Windows Terminal mouse reporting.
 """
 
 import argparse
 import os
 import platform
+import re
 import struct
 import subprocess
 import sys
@@ -234,6 +237,109 @@ class NanoWindowsTestSuite(unittest.TestCase):
                 self.assertNotEqual(proc.returncode, 0)
                 # Ensure process did not crash with Windows STATUS_ACCESS_VIOLATION (0xC0000005)
                 self.assertNotEqual(proc.returncode & 0xFFFFFFFF, 0xC0000005)
+
+
+    def test_05_mouse_wheel_support(self):
+        """Verify the compiled-in VT mouse DECSET sequences (fallback path).
+
+        NOTE: under ConPTY (Windows Terminal) conhost absorbs these
+        sequences before they reach the terminal, so their presence alone
+        does NOT prove wheel support there.  The sequences only take
+        effect on hosts that pass client output through to the terminal
+        verbatim.  The ConPTY registration mechanism is verified
+        separately by test_06.
+        """
+        enable_seq = b"\x1b[?1006h\x1b[?1000h"
+        disable_seq = b"\x1b[?1000l\x1b[?1006l"
+        for arch in self.TARGET_ARCHES:
+            exe_path = Path("build-nano") / f"nano-{arch}.exe"
+            with self.subTest(arch=arch):
+                self.assertTrue(exe_path.is_file(), f"Missing binary: {exe_path}")
+                data = exe_path.read_bytes()
+                self.assertIn(
+                    enable_seq,
+                    data,
+                    f"{exe_path.name} lacks the VT mouse-enable sequence "
+                    "(mouse wheel will not work on passthrough hosts)",
+                )
+                self.assertIn(
+                    disable_seq,
+                    data,
+                    f"{exe_path.name} lacks the VT mouse-disable sequence",
+                )
+
+    def test_06_mouse_relay_mechanism(self):
+        """Verify the ConPTY mouse relay mechanism is compiled into ncurses.
+
+        Under ConPTY the only mouse registration channel is the
+        ENABLE_MOUSE_INPUT console flag on the input handle (conhost then
+        emits the mouse-mode sequences to the terminal), and quick-edit
+        mode must be toggled in the same call or the flag stays
+        suppressed.  This is behavior invisible in the binary as a plain
+        string, so it is verified at two artifact levels:
+
+        1. The static ncurses archive must export the patched
+           `_nc_console_mouse_tracking` symbol (i.e. the patched object
+           is what nano links against).
+        2. If the build tree is still present, the sources that were
+           compiled must contain the relay logic (mode-flag toggle with
+           ENABLE_QUICK_EDIT_MODE / ENABLE_EXTENDED_FLAGS) and the
+           wheel-to-arrow-key binding in nano.
+        """
+        for arch in self.TARGET_ARCHES:
+            with self.subTest(arch=arch):
+                lib_path = Path("build-nano") / "install" / arch / "lib" / "libncursesw.a"
+                self.assertTrue(lib_path.is_file(), f"Missing library: {lib_path}")
+
+                # 1. Symbol check on the linked archive (durable artifact).
+                symbol = "_nc_console_mouse_tracking"
+                try:
+                    proc = subprocess.run(
+                        ["nm", str(lib_path)],
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        timeout=30,
+                    )
+                    symtable = proc.stdout
+                except (FileNotFoundError, subprocess.TimeoutExpired):
+                    symtable = lib_path.read_bytes()
+                self.assertRegex(
+                    symtable.decode("utf-8", errors="replace"),
+                    rf"\b T {re.escape(symbol)}\b",
+                    f"{lib_path} does not export {symbol}; the ConPTY mouse "
+                    "relay patch was not applied/linked",
+                )
+
+                # 2. Source-level checks on the tree that was compiled.
+                ncurses_src = (
+                    Path("build-nano") / "build" / arch / "ncurses-6.6" / "ncurses"
+                )
+                nano_src = Path("build-nano") / "build" / arch / "nano-9.3" / "src"
+                if not ncurses_src.is_dir() or not nano_src.is_dir():
+                    continue  # build tree cleaned; symbol check above still ran
+
+                win32con = (ncurses_src / "tinfo" / "lib_win32con.c").read_text(
+                    encoding="utf-8", errors="replace"
+                )
+                # The relay: mouse flag toggled together with quick-edit mode.
+                self.assertIn("ENABLE_MOUSE_INPUT", win32con)
+                self.assertIn("ENABLE_QUICK_EDIT_MODE", win32con)
+                self.assertIn("ENABLE_EXTENDED_FLAGS", win32con)
+                self.assertIn("_nc_console_mouse_tracking", win32con)
+
+                lib_mouse = (ncurses_src / "base" / "lib_mouse.c").read_text(
+                    encoding="utf-8", errors="replace"
+                )
+                # Wheel events delivered immediately (no click-interval wait).
+                self.assertIn("M_TERM_DRIVER", lib_mouse)
+                self.assertIn("BUTTON4_PRESSED", lib_mouse)
+
+                winio = (nano_src / "winio.c").read_text(
+                    encoding="utf-8", errors="replace"
+                )
+                # Wheel moves the cursor (arrow keys), gated to Windows.
+                self.assertIn("_WIN32", winio)
+                self.assertIn("KEY_UP : KEY_DOWN", winio)
 
 
 def main():

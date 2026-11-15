@@ -1,5 +1,5 @@
 --- a/src/definitions.h	2026-10-02 13:49:49.000000000 +0800
-+++ b/src/definitions.h	2026-11-15 14:44:37.914735966 +0800
++++ b/src/definitions.h	2026-11-15 16:07:42.747173362 +0800
 @@ -59,6 +59,83 @@
  #include <sys/param.h>
  #endif
@@ -85,7 +85,7 @@
  #include <regex.h>
  #include <signal.h>
 --- a/src/prototypes.h	2026-10-02 13:49:49.000000000 +0800
-+++ b/src/prototypes.h	2026-11-15 14:45:30.070748498 +0800
++++ b/src/prototypes.h	2026-11-15 16:07:42.747173362 +0800
 @@ -556,6 +556,9 @@
  #endif
  
@@ -97,7 +97,7 @@
  const char *tail(const char *path);
  char *concatenate(const char *path, const char *name);
 --- a/src/utils.c	2026-06-14 14:03:16.000000000 +0800
-+++ b/src/utils.c	2026-11-15 14:44:23.114733134 +0800
++++ b/src/utils.c	2026-11-15 16:07:42.747173362 +0800
 @@ -28,13 +28,45 @@
  #include <string.h>
  #include <unistd.h>
@@ -154,7 +154,7 @@
  }
  
 --- a/src/browser.c	2026-07-25 16:51:54.000000000 +0800
-+++ b/src/browser.c	2026-11-15 14:44:49.102738324 +0800
++++ b/src/browser.c	2026-11-15 16:07:42.747173362 +0800
 @@ -72,7 +72,16 @@
  	if (gauge > COLS)
  		gauge = COLS;
@@ -173,7 +173,7 @@
  	free_chararray(filelist, list_length);
  
 --- a/src/files.c	2026-10-02 13:49:49.000000000 +0800
-+++ b/src/files.c	2026-11-15 14:44:55.934739855 +0800
++++ b/src/files.c	2026-11-15 16:07:42.747173362 +0800
 @@ -29,12 +29,16 @@
  #endif
  #include <string.h>
@@ -193,7 +193,7 @@
  
  /* Add an item to the circular list of openfile structs. */
 --- a/src/nano.c	2026-10-02 13:49:49.000000000 +0800
-+++ b/src/nano.c	2026-11-15 14:45:15.290744556 +0800
++++ b/src/nano.c	2026-11-15 16:07:47.687178148 +0800
 @@ -980,7 +980,7 @@
  	/* The suspend keystroke must not elicit cursor-position display. */
  	lastmessage = HUSH;
@@ -203,3 +203,37 @@
  	/* Do what mutt does: send ourselves a SIGSTOP. */
  	kill(0, SIGSTOP);
  #endif
+@@ -2182,6 +2182,15 @@
+ 	 * before reading the rcfile, to be able to rebind/unbind keys. */
+ 	shortcut_init();
+ 
++#ifdef ENABLE_MOUSE
++#ifdef _WIN32
++	/* On Windows, let the mouse wheel scroll the text by default.
++	 * This happens before the rcfile is read, so that the user can
++	 * switch it off again with "unset mouse". */
++	SET(USE_MOUSE);
++#endif
++#endif
++
+ #ifdef ENABLE_NANORC
+ 	if (!ignore_rcfiles) {
+ 		/* Back up the command-line options that take an argument. */
+--- a/src/winio.c	2026-10-09 15:46:20.000000000 +0800
++++ b/src/winio.c	2026-11-15 17:08:07.511610820 +0800
+@@ -1681,7 +1681,15 @@
+ 			wmouse_trafo(footwin, mouse_y, mouse_x, FALSE);
+ 
+ 		if (in_middle || (in_footer && *mouse_y == 0)) {
++#ifdef _WIN32
++			/* On Windows, make the wheel move the cursor (and thus
++			 * the point of view when it reaches an edge) instead of
++			 * just scrolling the viewport, so that the caret follows
++			 * the text like it does when the wheel sends arrow keys. */
++			int keycode = (event.bstate & BUTTON4_PRESSED) ? KEY_UP : KEY_DOWN;
++#else
+ 			int keycode = (event.bstate & BUTTON4_PRESSED) ? ALT_UP : ALT_DOWN;
++#endif
+ 
+ 			/* One bump of the mouse wheel should scroll two lines. */
+ 			put_back(keycode);
