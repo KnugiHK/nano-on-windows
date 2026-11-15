@@ -22,7 +22,9 @@ For instructions on using GNU nano, see the [official documentation](https://www
 - **Cross-compiled builds**: GitHub Actions builds the Windows binaries on Ubuntu using mingw-w64 for x86 and x64, and llvm-mingw for ARM64.
 - **Statically linked ncurses**: The required ncurses library is statically linked. The binaries rely on standard Windows system DLLs, not third-party DLLs.
 - **Native terminal support**: ncurses is built with its Win32 console driver and bundled terminal descriptions, supporting Windows Terminal, ConPTY, SSH, and the classic console.
+- **Mouse wheel scrolling**: Includes patched ncurses with Win32 mouse event handling enabled by default for seamless scrolling in Windows Terminal and standard consoles.
 - **Windows configuration paths**: Nano searches standard Windows locations for its configuration and syntax files, including `%APPDATA%`, `%LOCALAPPDATA%`, `%USERPROFILE%`, and `C:/ProgramData/nano`.
+- **Documented patches**: Every change made to the bundled ncurses and nano sources, and the Windows-specific reason for it, is described in [`patches/README.md`](patches/README.md).
 
 ### Supported architectures
 
