@@ -14,8 +14,8 @@ NANO_MAJOR="v${NANO_VER%%.*}"
 NCURSES_VER="6.6"
 
 # LLVM MinGW toolchain for ARM64 cross-compilation
-LLVM_MINGW_VER="20250114"
-LLVM_MINGW_URL="https://github.com/mstorsjo/llvm-mingw/releases/download/${LLVM_MINGW_VER}/llvm-mingw-${LLVM_MINGW_VER}-ucrt-ubuntu-20.04-x86_64.tar.xz"
+LLVM_MINGW_VER="20261104"
+LLVM_MINGW_URL="https://github.com/mstorsjo/llvm-mingw/releases/download/${LLVM_MINGW_VER}/llvm-mingw-${LLVM_MINGW_VER}-ucrt-ubuntu-22.04-x86_64.tar.xz"
 
 # -----------------------------------------------------------------------------
 # Error Handling & Environment Setup
@@ -171,11 +171,6 @@ build_arch() {
         tar -xzf "${TARBALL_CACHE_PATH}/ncurses-${NCURSES_VER}.tar.gz" -C "${build_path}"
         pushd "${build_path}/ncurses-${NCURSES_VER}" >/dev/null
 
-        if [ -f "${PATCH_DIR}/ncurses-mingw.patch" ]; then
-            log "Applying patches/ncurses-mingw.patch..."
-            patch -p1 < "${PATCH_DIR}/ncurses-mingw.patch"
-        fi
-
         # Enable mouse wheel support in the Win32 console driver
         if [ -f "${PATCH_DIR}/ncurses-mouse.patch" ]; then
             log "Applying patches/ncurses-mouse.patch..."
@@ -187,6 +182,7 @@ build_arch() {
         # - compiled-in terminfo fallbacks (--with-fallbacks) via host tic/infocmp
         #   so Windows Terminal (ConPTY), SSH, and legacy conhost work out-of-the-box
         # - static library only (--enable-static --disable-shared)
+        cf_cv_wint_t=yes \
         CFLAGS="-O2 -pipe -D_WIN32_WINNT=0x0601" \
         LDFLAGS="-static" \
         ./configure \
