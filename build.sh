@@ -14,7 +14,7 @@ NANO_MAJOR="v${NANO_VER%%.*}"
 NCURSES_VER="6.6"
 
 # LLVM MinGW toolchain for ARM64 cross-compilation
-LLVM_MINGW_VER="20261104"
+LLVM_MINGW_VER="20261117"
 LLVM_MINGW_URL="https://github.com/mstorsjo/llvm-mingw/releases/download/${LLVM_MINGW_VER}/llvm-mingw-${LLVM_MINGW_VER}-ucrt-ubuntu-22.04-x86_64.tar.xz"
 
 # -----------------------------------------------------------------------------
