@@ -83,6 +83,12 @@ Build outputs, downloaded sources, and temporary files are kept in the gitignore
 python3 nano_tests.py --arch all
 ```
 
+#### Build Script Options
+
+You can pass the following optional flag to `./build.sh` (alone or alongside a target architecture):
+
+* `--no-version-suffix`: Reports the plain upstream version (e.g., `9.3`) in `nano --version` instead of appending the git tag or commit hash suffix.
+
 ## Verifying Build Integrity
 
 To ensure that the release files were built directly from this source code via GitHub Actions and have not been tampered with, GitHub Artifact Attestations is used. You can verify the authenticity of all three executables and `datafiles.zip` using the GitHub CLI.

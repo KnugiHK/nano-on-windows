@@ -3,6 +3,10 @@
 # build.sh — Cross-compile static GNU nano for Windows (x86, x64, arm64)
 # Mirrors the architecture of KnugiHK/wget-on-windows
 # Usage: ./build.sh [x86|x64|arm64|both|all]
+#
+# Options:
+#   --no-version-suffix    Report plain upstream version (e.g. "9.3") in
+#                          `nano --version` instead of the tag/commit suffix
 # =============================================================================
 set -e
 
@@ -30,6 +34,30 @@ abort() {
 }
 trap 'abort $LINENO "Unexpected error during build execution"' ERR
 
+# -----------------------------------------------------------------------------
+# Entry Point: Argument Parsing
+# -----------------------------------------------------------------------------
+TARGET=""
+NO_VERSION_SUFFIX=0
+
+for arg in "$@"; do
+    case "$arg" in
+        x86|x64|arm64|both|all)
+            if [ -n "$TARGET" ]; then
+                echo "Unknown argument: $arg" >&2
+                exit 1
+            fi
+            TARGET="$arg"
+            ;;
+        --no-version-suffix) NO_VERSION_SUFFIX=1 ;;
+        *)
+            echo "Unknown argument: $arg" >&2
+            exit 1
+            ;;
+    esac
+done
+TARGET="${TARGET:-both}"
+
 NPROC="$(nproc 2>/dev/null || echo 4)"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # All temporary files and output binaries live inside build-nano/
@@ -40,6 +68,37 @@ mkdir -p "${TARBALL_CACHE_PATH}"
 
 log() {
     echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] $*"
+}
+
+# Version suffix injected into the reported `nano --version` string:
+#   - tag HEAD points exactly at (with the leading "v" stripped)
+#   - otherwise the short commit hash (e.g. "9.3-9eaf4a8")
+#   - fallback to plain NANO_VER
+COMMIT_TAG=$(git -C "$ROOT_DIR" describe --tags --exact-match HEAD 2>/dev/null | sed 's/^v//' || true)
+COMMIT_HASH=$(git -C "$ROOT_DIR" rev-parse --short HEAD 2>/dev/null || true)
+if [ "$NO_VERSION_SUFFIX" -eq 1 ]; then
+    BUILD_VERSION="$NANO_VER"
+elif [ -n "$COMMIT_TAG" ]; then
+    BUILD_VERSION="$COMMIT_TAG"
+elif [ -n "$COMMIT_HASH" ]; then
+    BUILD_VERSION="${NANO_VER}-${COMMIT_HASH}"
+else
+    BUILD_VERSION="$NANO_VER"
+fi
+
+# Patch the pre-generated `configure` script so `nano --version` reports
+# BUILD_VERSION without re-running autoconf, and restamp the pre-built
+# docs so `make install` doesn't require makeinfo.
+inject_build_version() {
+    sed -i \
+        -e "s/^[[:space:]]*VERSION='${NANO_VER}'/VERSION='${BUILD_VERSION}'/" \
+        -e "s/^[[:space:]]*PACKAGE_VERSION='${NANO_VER}'/PACKAGE_VERSION='${BUILD_VERSION}'/" \
+        -e "s/^[[:space:]]*PACKAGE_STRING='GNU nano ${NANO_VER}'/PACKAGE_STRING='GNU nano ${BUILD_VERSION}'/" \
+        configure
+    sed -i \
+        -e "s/^@set VERSION ${NANO_VER}/@set VERSION ${BUILD_VERSION}/" \
+        doc/nano.texi
+    touch doc/nano.info
 }
 
 # -----------------------------------------------------------------------------
@@ -236,6 +295,10 @@ build_arch() {
         patch -p1 < "${PATCH_DIR}/nano-windows.patch"
     fi
 
+    if [ "$BUILD_VERSION" != "$NANO_VER" ]; then
+        inject_build_version
+    fi
+
     export PKG_CONFIG_PATH="${install_path}/lib/pkgconfig"
     export PKG_CONFIG_LIBDIR="${install_path}/lib/pkgconfig"
     export NCURSESW_CFLAGS="-I${install_path}/include -I${install_path}/include/ncursesw -DNCURSES_STATIC"
@@ -308,7 +371,6 @@ build_arch() {
 # -----------------------------------------------------------------------------
 # CLI Argument Dispatch
 # -----------------------------------------------------------------------------
-TARGET="${1:-both}"
 case "${TARGET}" in
     x86|x64|arm64)
         build_arch "${TARGET}"
@@ -321,10 +383,6 @@ case "${TARGET}" in
         build_arch "x86"
         build_arch "x64"
         build_arch "arm64"
-        ;;
-    *)
-        echo "Usage: $0 [x86|x64|arm64|both|all]" >&2
-        exit 1
         ;;
 esac
 
