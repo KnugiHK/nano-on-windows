@@ -232,7 +232,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v7
         with:
-          python-version: '3.14'
+          python-version: '3.15'
 
       - name: Run nano_tests.py smoke suite
         run: python nano_tests.py --arch all
@@ -254,7 +254,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v7
         with:
-          python-version: '3.14'
+          python-version: '3.15'
 
       - name: Run nano_tests.py smoke suite
         run: python nano_tests.py --arch arm64
