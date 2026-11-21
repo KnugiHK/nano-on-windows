@@ -137,6 +137,11 @@ cd nano-for-windows
 <p>Build outputs, downloaded sources, and temporary files are kept in the gitignored <code>build-nano/</code> directory. Run the Windows smoke tests with:</p>
 <pre><code class="language-bash">python3 nano_tests.py --arch all
 </code></pre>
+<h4>Build Script Options</h4>
+<p>You can pass the following optional flag to <code>./build.sh</code> (alone or alongside a target architecture):</p>
+<ul>
+<li><code>--no-version-suffix</code>: Reports the plain upstream version (e.g., <code>9.3</code>) in <code>nano --version</code> instead of appending the git tag or commit hash suffix.</li>
+</ul>
 <h2>Verifying Build Integrity</h2>
 <p>To ensure that the release files were built directly from this source code via GitHub Actions and have not been tampered with, GitHub Artifact Attestations is used. You can verify the authenticity of all three executables and <code>datafiles.zip</code> using the GitHub CLI.</p>
 <h3>Using PowerShell (Windows)</h3>
