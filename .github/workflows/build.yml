@@ -62,7 +62,7 @@ jobs:
           i686-w64-mingw32-objdump -p nano-x86.exe | grep "DLL Name:"
 
       - name: Attest x86 binary and data archive
-        if: github.event_name != 'pull_request'
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/attest-build-provenance@v4
         with:
           subject-path: |
@@ -118,7 +118,7 @@ jobs:
           x86_64-w64-mingw32-objdump -p nano-x64.exe | grep "DLL Name:"
 
       - name: Attest x64 binaries
-        if: github.event_name != 'pull_request'
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/attest-build-provenance@v4
         with:
           subject-path: |
@@ -178,7 +178,7 @@ jobs:
           ./toolchains/llvm-mingw/bin/aarch64-w64-mingw32-objdump -p nano-arm64.exe | grep "DLL Name:"
 
       - name: Attest arm64 binaries
-        if: github.event_name != 'pull_request'
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/attest-build-provenance@v4
         with:
           subject-path: |
